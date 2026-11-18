@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моя Визитка | NEKO</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #10131c; 
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Затемнение фона */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(16, 19, 28, 0.4); 
+            z-index: 0;
+        }
+
+        /* Канвас для звездного шлейфа */
+        #trail-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: 1;
+        }
+
+        /* Канвас для снега */
+        #snow-canvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: 2;
+        }
+
+        /* Светящиеся круги (Blobs) с плавным следованием за мышью */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 1;
+            transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); /* Плавное и мягкое движение */
+        }
+        .blob-1 { 
+            width: 400px; height: 400px; 
+            background: #3b82f6; 
+            top: 5%; left: 15%; 
+            animation: float 8s ease-in-out infinite; 
+        }
+        .blob-2 { 
+            width: 350px; height: 350px; 
+            background: #8b5cf6; 
+            bottom: 5%; right: 15%; 
+            animation: float 10s ease-in-out infinite reverse; 
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-40px) scale(1.1); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        /* Сама карточка */
+        .card {
+            position: relative;
+            z-index: 10;
+            background: rgba(27, 32, 48, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid #5795ff;
+            border-radius: 24px;
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            color: white;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px -12px rgba(87, 149, 255, 0.2);
+        }
+
+        /* Аватарка */
+        .avatar {
+            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+            border: 3px solid #5795ff; margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(87, 149, 255, 0.5);
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 10px rgba(87, 149, 255, 0.5); }
+            to { box-shadow: 0 0 30px rgba(87, 149, 255, 1), 0 0 15px rgba(87, 149, 255, 0.8); }
+        }
+
+        /* Текст */
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+        .subtitle { color: #5795ff; font-size: 14px; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .description { font-size: 14px; line-height: 1.6; color: #b7bfd0; margin-bottom: 30px; }
+        .description a { color: #5795ff; text-decoration: none; font-weight: bold; transition: color 0.2s; }
+        .description a:hover { color: #3d7ae0; text-decoration: underline; }
+
+        /* Соцсети */
+        .socials { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        .socials a {
+            display: flex; justify-content: center; align-items: center;
+            width: 45px; height: 45px; background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #2f3a55; border-radius: 50%; color: white;
+            text-decoration: none; font-size: 18px; transition: all 0.3s ease;
+            position: relative; z-index: 11;
+        }
+        .socials a:hover { background: #5795ff; border-color: #5795ff; transform: translateY(-3px) scale(1.1); box-shadow: 0 10px 20px rgba(87, 149, 255, 0.4); }
+
+        /* Кнопки */
+        .contact-btn {
+            display: block; width: 100%; padding: 15px;
+            background: linear-gradient(135deg, #5795ff, #3d7ae0); color: white;
+            text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 16px;
+            transition: all 0.3s ease; box-shadow: 0 10px 20px rgba(87, 149, 255, 0.3);
+            position: relative; z-index: 11;
+        }
+        .contact-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 25px rgba(87, 149, 255, 0.5); background: linear-gradient(135deg, #3d7ae0, #2563eb); }
+
+        .tg-channel-btn {
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            width: 100%; padding: 15px; margin-top: 15px;
+            background: linear-gradient(135deg, #29b6f6, #0288d1); color: white;
+            text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 16px;
+            transition: all 0.3s ease; box-shadow: 0 10px 20px rgba(41, 182, 246, 0.3);
+            position: relative; z-index: 11;
+        }
+        .tg-channel-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 25px rgba(41, 182, 246, 0.5); background: linear-gradient(135deg, #0288d1, #01579b); }
+    </style>
+</head>
+<body>
+
+    <!-- Канвас для шлейфа -->
+    <canvas id="trail-canvas"></canvas>
+    <!-- Канвас для снега -->
+    <canvas id="snow-canvas"></canvas>
+
+    <div class="blob blob-1" id="blob1"></div>
+    <div class="blob blob-2" id="blob2"></div>
+
+    <div class="card">
+        <img src="avatar.jpeg" alt="Моё фото" class="avatar" onerror="this.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80';">
+        
+        <h1>Привет, я Нек!</h1>
+        <p class="subtitle">Веб-разработчик</p>
+        
+        <p class="description">
+            Юный веб-разработчик (14 лет). Делаю сайты с душой. 
+            Если вам понравился мой проект, вы всегда можете поддержать меня! ❤️<br><br>
+            Мой Telegram: <a href="https://t.me/uygix" target="_blank">@uygix</a>
+        </p>
+
+        <div class="socials">
+            <a href="https://t.me/uygix" target="_blank" title="Telegram"><i class="fa-brands fa-telegram"></i></a>
+            <a href="#" target="_blank" title="GitHub"><i class="fa-brands fa-github"></i></a>
+            <a href="#" target="_blank" title="VK"><i class="fa-brands fa-vk"></i></a>
+        </div>
+
+        <a href="index.html" class="contact-btn">Смотреть NEKO STORE</a>
+        
+        <a href="https://t.me/+hzZyzE3OTkU2OTAx" target="_blank" class="tg-channel-btn">
+            <i class="fa-brands fa-telegram"></i> Подписаться на канал
+        </a>
+    </div>
+
+    <script>
+        // --- 1. ЛОГИКА СНЕГА ---
+        const canvasSnow = document.getElementById('snow-canvas');
+        const ctxSnow = canvasSnow.getContext('2d');
+        let wSnow = canvasSnow.width = window.innerWidth;
+        let hSnow = canvasSnow.height = window.innerHeight;
+
+        const snowflakes = [];
+        for (let i = 0; i < 80; i++) {
+            snowflakes.push({
+                x: Math.random() * wSnow, y: Math.random() * hSnow,
+                radius: Math.random() * 2 + 1, speedY: Math.random() * 1 + 0.5, speedX: Math.random() * 1 - 0.5 
+            });
+        }
+
+        function drawSnow() {
+            ctxSnow.clearRect(0, 0, wSnow, hSnow);
+            ctxSnow.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctxSnow.beginPath();
+            for (let i = 0; i < snowflakes.length; i++) {
+                const flake = snowflakes[i];
+                ctxSnow.moveTo(flake.x, flake.y);
+                ctxSnow.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2);
+                flake.y += flake.speedY;
+                flake.x += flake.speedX;
+                if (flake.y > hSnow) { flake.y = -10; flake.x = Math.random() * wSnow; }
+            }
+            ctxSnow.fill();
+            requestAnimationFrame(drawSnow);
+        }
+        drawSnow();
+
+        // --- 2. ЛОГИКА ЗВЕЗДНОГО ШЛЕЙФА И ПАРАЛЛАКСА ---
+        const canvasTrail = document.getElementById('trail-canvas');
+        const ctxTrail = canvasTrail.getContext('2d');
+        let wTrail = canvasTrail.width = window.innerWidth;
+        let hTrail = canvasTrail.height = window.innerHeight;
+
+        const blobs = {
+            b1: document.getElementById('blob1'),
+            b2: document.getElementById('blob2')
+        };
+
+        let mouseX = wTrail / 2;
+        let mouseY = hTrail / 2;
+        let targetMouseX = mouseX;
+        let targetMouseY = mouseY;
+
+        window.addEventListener('resize', () => {
+            wSnow = canvasSnow.width = window.innerWidth;
+            hSnow = canvasSnow.height = window.innerHeight;
+            wTrail = canvasTrail.width = window.innerWidth;
+            hTrail = canvasTrail.height = window.innerHeight;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            targetMouseX = e.clientX;
+            targetMouseY = e.clientY;
+        });
+
+        // Массив для хранения частиц шлейфа
+        const trailParticles = [];
+
+        function animateTrail() {
+            // Плавное следование мыши
+            mouseX += (targetMouseX - mouseX) * 0.1;
+            mouseY += (targetMouseY - mouseY) * 0.1;
+
+            // Шары плавно следуют за мышью
+            const moveX = (mouseX - wTrail / 2) * 0.05;
+            const moveY = (mouseY - hTrail / 2) * 0.05;
+            
+            // В CSS у нас стоит transition, поэтому мы просто меняем transform
+            blobs.b1.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            blobs.b2.style.transform = `translate(${-moveX}px, ${-moveY}px)`;
+
+            ctxTrail.clearRect(0, 0, wTrail, hTrail);
+
+            // Создаем новые частицы у курсора (каждый кадр)
+            if (Math.random() > 0.2) { // Не каждый кадр, чтобы не спамить
+                trailParticles.push({
+                    x: mouseX,
+                    y: mouseY,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    life: 1, // Жизнь от 1 до 0
+                    size: Math.random() * 4 + 1,
+                    color: Math.random() > 0.5 ? '87, 149, 255' : '139, 92, 246' // Синий или фиолетовый
+                });
+            }
+
+            // Обновляем и рисуем частицы
+            for (let i = trailParticles.length - 1; i >= 0; i--) {
+                const p = trailParticles[i];
+                
+                // Движение
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02; // Умирает
+                p.size *= 0.98; // Уменьшается
+
+                // Если частица умерла, удаляем её
+                if (p.life <= 0) {
+                    trailParticles.splice(i, 1);
+                    continue;
+                }
+
+                // Рисуем
+                ctxTrail.beginPath();
+                ctxTrail.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctxTrail.fillStyle = `rgba(${p.color}, ${p.life})`;
+                ctxTrail.fill();
+            }
+
+            requestAnimationFrame(animateTrail);
+        }
+
+        animateTrail();
+    </script>
+</body>
+</html>
