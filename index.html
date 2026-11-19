@@ -12,10 +12,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            background-image: url('bg.jpg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
             background-color: #10131c;
             color: white;
             font-family: 'Montserrat', sans-serif;
@@ -30,7 +26,7 @@
             content: '';
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(16, 19, 28, 0.6);
+            background: rgba(16, 19, 28, 0.7);
             z-index: -1;
         }
 
@@ -40,6 +36,14 @@
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 1;
+        }
+
+        /* 3D Canvas (на заднем фоне) */
+        #webgl-canvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; /* Позади всего, но перед фоном */
+            pointer-events: none;
         }
 
         header {
@@ -63,6 +67,7 @@
         #cart-btn { 
             background: rgba(37, 43, 61, 0.8); padding: 8px 16px; border-radius: 20px;
             border: 1px solid #5795ff; color: #fff; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 15px;
+            z-index: 60;
         }
         #cart-btn:hover { background: #5795ff; color: #10131c; }
 
@@ -79,9 +84,9 @@
             gap: 30px; margin-top: 20px; 
         }
         
-        /* Карточка с 3D-эффектом и свечением */
+        /* Карточка */
         .product {
-            background: rgba(35, 40, 58, 0.8); backdrop-filter: blur(10px); 
+            background: rgba(35, 40, 58, 0.85); backdrop-filter: blur(10px); 
             padding: 30px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); 
             display: flex; flex-direction: column; justify-content: space-between;
             text-align: center; 
@@ -97,7 +102,6 @@
             box-shadow: 0 15px 40px rgba(87, 149, 255, 0.3); 
         }
 
-        /* Светящееся пятно внутри карточки за мышкой */
         .product::before {
             content: '';
             position: absolute;
@@ -121,9 +125,7 @@
             position: relative; z-index: 2;
         }
         
-        .buy-button:hover { 
-            background: #5795ff; color: white; box-shadow: 0 0 20px rgba(87, 149, 255, 0.6);
-        }
+        .buy-button:hover { background: #5795ff; color: white; box-shadow: 0 0 20px rgba(87, 149, 255, 0.6); }
 
         /* Корзина */
         .cart-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 90; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
@@ -158,12 +160,33 @@
         .social-links a.tg:hover { background: #29b6f6; color: white; border-color: #29b6f6; transform: translateY(-3px); }
         .social-links a.vk:hover { background: #4a76a8; color: white; border-color: #4a76a8; transform: translateY(-3px); }
 
-        @media (max-width: 800px) { header { flex-direction: column; gap: 15px; } nav { flex-wrap: wrap; justify-content: center; } }
+        /* АДАПТИВ ПОД ТЕЛЕФОН (2 КОЛОНКИ) */
+        @media (max-width: 800px) { 
+            header { flex-direction: column; gap: 15px; padding: 15px 20px;} 
+            nav { flex-wrap: wrap; justify-content: center; gap: 10px; } 
+            main > h2 { font-size: 26px; margin-bottom: 20px;}
+        }
+        
+        @media (max-width: 600px) {
+            #products { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 10px; 
+            }
+            .product { 
+                padding: 15px 10px; 
+                border-radius: 12px;
+            }
+            .product h3 { font-size: 14px; margin-bottom: 5px; }
+            .price { font-size: 18px; margin-bottom: 10px; }
+            .buy-button { padding: 10px; font-size: 13px; border-radius: 8px; }
+        }
     </style>
 </head>
 <body>
 
+    <!-- Canvas для снега и 3D-человека -->
     <canvas id="snow-canvas"></canvas>
+    <canvas id="webgl-canvas"></canvas>
 
     <header>
         <h1>NEKO STORE</h1>
@@ -206,10 +229,13 @@
         </div>
     </footer>
 
-    <script>
-        localStorage.clear(); // Очистка старых данных
+    <!-- ПОДКЛЮЧАЕМ THREE.JS ДЛЯ 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-        // --- СНЕГ ---
+    <script>
+        localStorage.clear();
+
+        // --- 1. ЛОГИКА СНЕГА ---
         const snowCanvas = document.getElementById('snow-canvas');
         const sCtx = snowCanvas.getContext('2d');
         let sWidth = snowCanvas.width = window.innerWidth;
@@ -242,7 +268,7 @@
         }
         drawSnow();
 
-        // --- МАГАЗИН ---
+        // --- 2. МАГАЗИН И КОРЗИНА ---
         const telegramUsername = "uygix"; 
         const productsContainer = document.getElementById("products");
 
@@ -259,7 +285,11 @@
             { name: "Номер +375 (Беларусь)", price: 850 },
             { name: "Номер +380 (Украина)", price: 400 },
             { name: "Номер +33 (Франция)", price: 300 },
-            { name: "Номер +81 (Япония)", price: 250 }
+            { name: "Номер +81 (Япония)", price: 250 },
+            { name: "Номер +86 (Китай)", price: 650 },
+            { name: "Номер +374 (Армения)", price: 400 },
+            { name: "Номер +218 (Ливия)", price: 450 },
+            { name: "Номер +34 (Испания)", price: 250 }
         ];
 
         defaultProducts.forEach(product => {
@@ -273,7 +303,7 @@
             productsContainer.appendChild(div);
         });
 
-        // --- 3D-ЭФФЕКТ И СВЕЧЕНИЕ НА КАРТОЧКАХ ---
+        // 3D-ЭФФЕКТ НА КАРТОЧКАХ
         document.querySelectorAll('.product').forEach(card => {
             card.addEventListener('mousemove', (e) => {
                 const rect = card.getBoundingClientRect();
@@ -295,7 +325,7 @@
             });
         });
 
-        // --- КОРЗИНА ---
+        // ЛОГИКА КОРЗИНЫ
         let cart = [];
         const cartBtn = document.getElementById("cart-btn");
         const cartSidebar = document.getElementById("cart-sidebar");
@@ -358,6 +388,91 @@
             let message = `Привет! Я по поводу ${namesArray.join(', ')}`;
             this.href = `https://t.me/${telegramUsername}?text=${encodeURIComponent(message)}`;
             setTimeout(() => { cart = []; updateCartUI(); closeCart(); }, 100);
+        });
+
+        // --- 3. 3D ЧЕЛОВЕК С ВАШИМ ЛИЦОМ (THREE.JS) ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        const group = new THREE.Group();
+        
+        // Материалы
+        const glowMaterial = new THREE.MeshBasicMaterial({ color: 0x5795ff, wireframe: true });
+        const solidMaterial = new THREE.MeshStandardMaterial({ color: 0x1b2030, emissive: 0x5795ff, emissiveIntensity: 0.5 });
+
+        // Голова (Ваше фото)
+        const textureLoader = new THREE.TextureLoader();
+        const faceTexture = textureLoader.load('my_face.jpg'); // Имя файла с вашим лицом
+        const faceMaterial = new THREE.SpriteMaterial({ map: faceTexture });
+        const head = new THREE.Sprite(faceMaterial);
+        head.position.y = 1.8;
+        head.scale.set(1.5, 1.5, 1); 
+        group.add(head);
+
+        // Тело
+        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.6, 1.5, 16);
+        const body = new THREE.Mesh(bodyGeo, solidMaterial);
+        body.position.y = 0.5;
+        group.add(body);
+
+        // Руки и ноги
+        const limbGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8);
+        
+        const leftArm = new THREE.Mesh(limbGeo, glowMaterial);
+        leftArm.position.set(-0.7, 0.8, 0);
+        leftArm.rotation.z = Math.PI / 4;
+        group.add(leftArm);
+
+        const rightArm = new THREE.Mesh(limbGeo, glowMaterial);
+        rightArm.position.set(0.7, 0.8, 0);
+        rightArm.rotation.z = -Math.PI / 4;
+        group.add(rightArm);
+
+        const leftLeg = new THREE.Mesh(limbGeo, solidMaterial);
+        leftLeg.position.set(-0.25, -1, 0);
+        group.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(limbGeo, solidMaterial);
+        rightLeg.position.set(0.25, -1, 0);
+        group.add(rightLeg);
+
+        // Ставим человека справа (или прячем на телефоне)
+        const updatePosition = () => {
+            if (window.innerWidth < 800) {
+                group.position.set(0, -1, -3); // На телефоне сдвигаем назад и вниз
+            } else {
+                group.position.set(3.5, -0.5, 0); // На ПК справа
+            }
+        };
+        updatePosition();
+        scene.add(group);
+
+        // Свет
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0x5795ff, 1.5, 10);
+        pointLight.position.set(2, 3, 4);
+        scene.add(pointLight);
+
+        // Анимация
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            group.rotation.y += 0.01; 
+            group.position.y = (window.innerWidth < 800 ? -1 : -0.5) + Math.sin(Date.now() * 0.002) * 0.2;
+            renderer.render(scene, camera);
+        }
+        animate3D();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updatePosition(); // Пересчитываем позицию при изменении размера
         });
     </script>
 </body>
